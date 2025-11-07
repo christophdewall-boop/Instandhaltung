@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Supermarkt-Checkliste · V3 mit Unterkategorien</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @media print {
+      .no-print { display: none !important; }
+      .page-break { page-break-after: always; }
+      body { color: #000; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      input, textarea, select { border: none !important; padding: 0 !important; }
+      .print-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.5rem; }
+      .print-label { font-weight: 600; }
+      .print-value { border-bottom: 1px solid #000; min-height: 1.5rem; }
+    }
+  </style>
+</head>
+<body class="bg-gray-50 text-gray-900">
+  <div class="mx-auto max-w-6xl p-4 md:p-8 space-y-6">
+    <header class="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+      <div>
+        <h1 class="text-3xl font-bold">Supermarkt-Checkliste</h1>
+        <p class="text-sm text-gray-600">Technische Anlagen & Gebäudezustand · Version 3 · mit Unterkategorien</p>
+        <div id="badgeRow" class="mt-2 flex flex-wrap gap-2 text-sm"></div>
+      </div>
+      <div class="no-print flex flex-wrap items-center gap-2">
+        <label class="flex items-center gap-2 border rounded-md px-2 py-1 bg-white">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="h-4 w-4"><path d="M10 2a8 8 0 105.293 14.293l4.707 4.707 1.414-1.414-4.707-4.707A8 8 0 0010 2zm0 2a6 6 0 110 12A6 6 0 0110 4z"/></svg>
+          <input id="search" type="search" placeholder="Suche…" class="outline-none" />
+        </label>
+        <label class="flex items-center gap-2 border rounded-md px-2 py-1 bg-white">
+          <span>Status</span>
+          <select id="statusFilter" class="bg-white outline-none">
+            <option value="alle">Alle</option>
+            <option value="offen">Offen</option>
+            <option value="ok">OK</option>
+            <option value="mangel">Mangel</option>
+          </select>
+        </label>
+        <label class="flex items-center gap-2 border rounded-md px-2 py-1 bg-white">
+          <input id="onlyCritical" type="checkbox" />
+          <span>nur kritisch</span>
+        </label>
+        <button id="btnJson" class="px-3 py-2 rounded-md border bg-white">JSON</button>
+        <button id="btnCsv" class="px-3 py-2 rounded-md border bg-white">CSV</button>
+        <button id="btnPdf" class="px-3 py-2 rounded-md border bg-white">PDF</button>
+        <button id="btnReset" class="px-3 py-2 rounded-md border bg-white">Zurücksetzen</button>
+      </div>
+    </header>
+
+    <!-- Kopfbereich mit frei wählbaren Feldern (aus V2 übernommen) -->
+    <section class="rounded-2xl border bg-white p-6">
+      <h2 class="text-lg font-semibold mb-4">Stammdaten</h2>
+      <div class="grid md:grid-cols-2 gap-4">
+        <div>
+          <label class="text-sm font-medium">Marktname</label>
+          <input id="f_marktname" type="text" class="w-full border rounded-md p-2" placeholder="z. B. EDEKA Beispielmarkt" />
+        </div>
+        <div>
+          <label class="text-sm font-medium">Filialnummer</label>
+          <input id="f_filialnummer" type="text" class="w-full border rounded-md p-2" placeholder="z. B. 0173" />
+        </div>
+        <div class="md:col-span-2">
+          <label class="text-sm font-medium">Adresse</label>
+          <textarea id="f_adresse" rows="2" class="w-full border rounded-md p-2" placeholder="Straße Nr., PLZ Ort"></textarea>
+        </div>
+        <div>
+          <label class="text-sm font-medium">Ansprechpartner</label>
+          <input id="f_ansprechpartner" type="text" class="w-full border rounded-md p-2" placeholder="Name & Kontakt" />
+        </div>
+        <div>
+          <label class="text-sm font-medium">Datum der Prüfung</label>
+          <input id="f_datum" type="date" class="w-full border rounded-md p-2" />
+        </div>
+        <div>
+          <label class="text-sm font-medium">Prüfer</label>
+          <input id="f_pruefer" type="text" class="w-full border rounded-md p-2" placeholder="Name Prüfer/in" />
+        </div>
+        <div>
+          <label class="text-sm font-medium">Verantwortlicher</label>
+          <input id="f_verantwortlicher" type="text" class="w-full border rounded-md p-2" placeholder="Name Verantwortliche/r" />
+        </div>
+      </div>
+
+      <!-- Druckansicht -->
+      <div class="hidden print:grid print-grid mt-4">
+        <div><div class="print-label">Marktname</div><div id="pv_marktname" class="print-value"></div></div>
+        <div><div class="print-label">Filialnummer</div><div id="pv_filialnummer" class="print-value"></div></div>
+        <div><div class="print-label">Ansprechpartner</div><div id="pv_ansprechpartner" class="print-value"></div></div>
+        <div class="md:col-span-3"><div class="print-label">Adresse</div><div id="pv_adresse" class="print-value"></div></div>
+        <div><div class="print-label">Datum der Prüfung</div><div id="pv_datum" class="print-value"></div></div>
+        <div><div class="print-label">Prüfer</div><div id="pv_pruefer" class="print-value"></div></div>
+        <div><div class="print-label">Verantwortlicher</div><div id="pv_verantwortlicher" class="print-value"></div></div>
+      </div>
+    </section>
+
+    <main id="content" class="space-y-6"></main>
+
+    <footer class="py-8 text-center text-xs text-gray-500">
+      © <span id="year"></span> Supermarkt-Checkliste · Lokale Speicherung im Browser · Version 3.0
+    </footer>
+  </div>
+
+  <script>
+    // ====== DATENSTRUKTUR V3: Sektionen mit Untersektionen ======
+    const SECTIONS = [
+      { id:"allgemein", title:"Allgemeine Gebäudedaten", subsections:[
+        { id:"allg-wartung", title:"Wartungsstand", items:[
+          { id:"letzte-wartung-gesamt", label:"Letzte Wartung / Inspektion (gesamt)", critical:true }
+        ]}
+      ]},
+      { id:"gebaeudehuelle", title:"Gebäudehülle & Baukonstruktion", subsections:[
+        { id:"dachbereich", title:"Dachbereich", items:[
+          { id:"dachhaut", label:"Dachhaut dicht, keine Leckagen", critical:true },
+          { id:"dachrinne", label:"Dachrinnen und Fallrohre sauber", critical:true }
+        ]},
+        { id:"aussenhaut", title:"Fassade & Öffnungen", items:[
+          { id:"fassade", label:"Fassade unbeschädigt, keine Risse", critical:false },
+          { id:"daemmung", label:"Wärmedämmung intakt", critical:false },
+          { id:"fenster-dichtungen", label:"Fenster-/Türdichtungen intakt", critical:false },
+          { id:"sicherheitsglas", label:"Sicherheitsglas ohne Beschädigungen", critical:true }
+        ]},
+        { id:"sicherheit-flucht", title:"Sicherheit & Fluchtwege", items:[
+          { id:"blitzschutz", label:"Blitzschutzanlage geprüft", critical:true },
+          { id:"fluchtwege", label:"Fluchtwege gekennzeichnet und frei", critical:true }
+        ]}
+      ]},
+      { id:"windfang", title:"Windfang / Eingangsbereich", subsections:[
+        { id:"automatiktuer", title:"Automatiktür", items:[
+          { id:"auto-tuer-lauf", label:"Öffnen/Schließen reibungslos", critical:true },
+          { id:"auto-tuer-sensoren", label:"Sensoren & Sicherheitsleisten ok", critical:true },
+          { id:"auto-tuer-kraft", label:"Schließkraft korrekt (keine Quetschgefahr)", critical:true },
+          { id:"auto-tuer-not", label:"Notentriegelung vorhanden & geprüft", critical:true },
+          { id:"auto-tuer-glas", label:"Glasflächen unbeschädigt, sauber", critical:false },
+          { id:"auto-tuer-dichtungen", label:"Dichtungen intakt", critical:false },
+          { id:"auto-tuer-plakette", label:"Wartungsnachweis / Prüfplakette aktuell", critical:true }
+        ]},
+        { id:"failover", title:"Ausfall-Verhalten", items:[
+          { id:"stromausfall-test", label:"Funktionstest bei Stromausfall durchgeführt", critical:true }
+        ]},
+        { id:"luftschleier", title:"Türluftschleier", items:[
+          { id:"luftschleier-automatik", label:"Schaltet automatisch mit Tür", critical:true },
+          { id:"luftschleier-strom", label:"Luftstrom deckend nach unten", critical:true },
+          { id:"luftschleier-heiz", label:"Heizfunktion im Winterbetrieb", critical:true },
+          { id:"luftschleier-filter", label:"Filter sauber", critical:true },
+          { id:"luftschleier-gehaeuse", label:"Montage stabil, keine Vibration", critical:true },
+          { id:"luftschleier-steuerung", label:"Steuerung/Versorgung ok", critical:true }
+        ]},
+        { id:"komfort", title:"Komfort / Umfeld", items:[
+          { id:"energie-windfang", label:"Temperatur konstant, keine Zugluft", critical:false },
+          { id:"windfang-boden", label:"Beleuchtung & rutschfester Boden", critical:false }
+        ]}
+      ]},
+      { id:"innenraeume", title:"Innenräume & Bodenflächen", subsections:[
+        { id:"boden", title:"Boden", items:[
+          { id:"boden", label:"Bodenbeläge sauber, rutschfest, unbeschädigt", critical:false }
+        ]},
+        { id:"huelle", title:"Hülle & Decken", items:[
+          { id:"waende-decken", label:"Wände/Decken ohne Schimmel oder Risse", critical:true },
+          { id:"deckenplatten", label:"Deckenplatten sicher befestigt", critical:false }
+        ]},
+        { id:"sicherheit", title:"Beleuchtung & Rettung", items:[
+          { id:"beleuchtung-innen", label:"Beleuchtung & Notbeleuchtung funktionsfähig", critical:true },
+          { id:"rettungswege", label:"Rettungswege gekennzeichnet", critical:true }
+        ]}
+      ]},
+      { id:"sanitaer", title:"Sanitär- & Sozialbereiche", subsections:[
+        { id:"wc", title:"WC-Bereiche", items:[
+          { id:"wc", label:"WC-Anlagen sauber & funktionsfähig", critical:false }
+        ]},
+        { id:"ausstattung", title:"Ausstattung", items:[
+          { id:"waschgelegenheiten", label:"Seifenspender/Trocknung vorhanden", critical:false }
+        ]},
+        { id:"lueftung", title:"Lüftung & Warmwasser", items:[
+          { id:"warmwasser", label:"Warmwasserfunktion geprüft", critical:true },
+          { id:"belueftung", label:"Belüftung ausreichend", critical:true },
+          { id:"personalraeume", label:"Personalräume ordentlich & sicher", critical:false }
+        ]}
+      ]},
+      { id:"hlk", title:"Lüftung/Heizung/Klima (HLK)", subsections:[
+        { id:"rlt", title:"Lüftung", items:[
+          { id:"rlt-filter", label:"RLT/Lüftung gewartet (Filterwechsel)", critical:true }
+        ]},
+        { id:"kaelte", title:"Kälte/Klima", items:[
+          { id:"kaelte-klima", label:"Kälte-/Klimaanlage funktionsfähig", critical:true },
+          { id:"kondensat", label:"Kondensatabläufe frei & dicht", critical:true }
+        ]},
+        { id:"heizung", title:"Heizung", items:[
+          { id:"heizungsanlage", label:"Heizungsanlage geprüft (Therme/WP)", critical:true },
+          { id:"temp-regelung", label:"Temperaturregelung korrekt (Soll/Ist)", critical:true }
+        ]},
+        { id:"mess", title:"Messung", items:[
+          { id:"energiezaehler", label:"Energiezähler/Messsysteme lesbar", critical:false }
+        ]}
+      ]},
+      { id:"elektro", title:"Elektrotechnik", subsections:[
+        { id:"verteilungen", title:"Verteilungen", items:[
+          { id:"hv-uv", label:"Haupt-/Unterverteilungen beschriftet & sauber", critical:true }
+        ]},
+        { id:"schutz", title:"Schutzorgane", items:[
+          { id:"fi-ls", label:"FI/LS-Schalter geprüft", critical:true },
+          { id:"steckdosen", label:"Steckdosen/Leitungen unbeschädigt", critical:true }
+        ]},
+        { id:"notstrom", title:"Not-/Sicherheitsstrom", items:[
+          { id:"sicherheitsbeleuchtung", label:"Sicherheitsbeleuchtung getestet", critical:true },
+          { id:"usv", label:"USV/Netzersatzanlage geprüft (falls vorhanden)", critical:true }
+        ]},
+        { id:"dguv", title:"Prüfungen", items:[
+          { id:"dguv-v3", label:"Prüfprotokolle DGUV V3 aktuell", critical:true }
+        ]}
+      ]},
+      { id:"kuehltechnik", title:"Kälte- & Kühltechnik", subsections:[
+        { id:"betrieb", title:"Betrieb", items:[
+          { id:"kuehlmoebel", label:"Kühlmöbel/Kühlräume störungsfrei", critical:true },
+          { id:"temperatur-ueberwachung", label:"Temperaturüberwachung funktioniert", critical:true }
+        ]},
+        { id:"dichtungen", title:"Dichtungen / Abtau", items:[
+          { id:"tuerdichtungen", label:"Türdichtungen in Ordnung", critical:true },
+          { id:"abtau", label:"Abtauvorrichtungen geprüft", critical:true }
+        ]},
+        { id:"uebertrager", title:"Wärmeübertrager / Kältemittel", items:[
+          { id:"waermeuebertrager", label:"Kondensator/Verdampfer gereinigt", critical:true },
+          { id:"kaeltemittel", label:"Kältemittelprüfung dokumentiert", critical:true }
+        ]}
+      ]},
+      { id:"brandschutz", title:"Brandschutz", subsections:[
+        { id:"loescher", title:"Tragbare Löscher", items:[
+          { id:"feuerloescher", label:"Feuerlöscher vorhanden & geprüft", critical:true }
+        ]},
+        { id:"anlagen", title:"Anlagen", items:[
+          { id:"bma", label:"Brandmeldeanlage funktionsfähig (Testalarm)", critical:true },
+          { id:"sprinkler", label:"Sprinkler-/Gaslöschanlage gewartet", critical:true }
+        ]},
+        { id:"baulich", title:"Baulicher Brandschutz", items:[
+          { id:"brandabschnitte", label:"Brandabschnitte/Türen in Ordnung", critical:true },
+          { id:"notausgaenge", label:"Notausgänge frei & beleuchtet", critical:true },
+          { id:"feuerwehrlaufkarten", label:"Feuerwehrlaufkarten aktuell", critical:true }
+        ]}
+      ]},
+      { id:"lager", title:"Lager & Anlieferung", subsections:[
+        { id:"regale", title:"Regale", items:[
+          { id:"regalpruefung", label:"Regalprüfung nach DIN EN 15635", critical:true }
+        ]},
+        { id:"tore", title:"Tore & Sicherung", items:[
+          { id:"tore", label:"Tore/Rolltore funktionsfähig, geprüft", critical:true },
+          { id:"absturzsicherung", label:"Absturzsicherungen vorhanden", critical:true }
+        ]},
+        { id:"ordnung-licht", title:"Ordnung & Licht", items:[
+          { id:"ordnung", label:"Sauberkeit & Ordnung gewährleistet", critical:false },
+          { id:"beleuchtung-lager", label:"Beleuchtung ausreichend", critical:false },
+          { id:"bodenmarkierung", label:"Bodenmarkierungen sichtbar", critical:false }
+        ]}
+      ]},
+      { id:"verkaufsraum", title:"Verkaufsraum & Technik", subsections:[
+        { id:"licht", title:"Beleuchtung", items:[
+          { id:"beleuchtung-verkauf", label:"Beleuchtung (Innen & Außen) funktionsfähig", critical:false },
+          { id:"kuehlmoebel-licht", label:"Kühlmöbelbeleuchtung/-abdeckungen geprüft", critical:false }
+        ]},
+        { id:"it", title:"IT & Kassen", items:[
+          { id:"kassen-it", label:"Kassen-/IT-Anlagen sicher montiert", critical:true }
+        ]},
+        { id:"ausstattung", title:"Ausstattung", items:[
+          { id:"regale", label:"Regale sicher & sauber", critical:false }
+        ]}
+      ]},
+      { id:"aussen", title:"Außenanlagen & Parkplatz", subsections:[
+        { id:"wege", title:"Wege & Flächen", items:[
+          { id:"wege", label:"Fahrbahn/Gehwege ohne Stolperstellen", critical:true },
+          { id:"gruenflaechen", label:"Grünflächen gepflegt", critical:false }
+        ]},
+        { id:"technik", title:"Technik & Beleuchtung", items:[
+          { id:"beleuchtung-aussen", label:"Außenbeleuchtung & Beschilderung i.O.", critical:false }
+        ]},
+        { id:"entwaesserung", title:"Entwässerung & Abfall", items:[
+          { id:"entwaesserung", label:"Entwässerung funktioniert", critical:true },
+          { id:"muellstation", label:"Müllstation sauber & brandsicher", critical:true }
+        ]}
+      ]},
+      { id:"sicherheit", title:"Sicherheits- & Kommunikationstechnik", subsections:[
+        { id:"ema", title:"Einbruchschutz", items:[
+          { id:"ema", label:"Einbruchmeldeanlage funktionsfähig", critical:true }
+        ]},
+        { id:"video", title:"Videoüberwachung", items:[
+          { id:"video", label:"Kameras aktiv & korrekt ausgerichtet", critical:true }
+        ]},
+        { id:"zutritt", title:"Zutritt & IT", items:[
+          { id:"zutritt", label:"Zutrittskontrolle funktioniert", critical:true },
+          { id:"it-telefon", label:"Telefon-/IT-Systeme stabil", critical:true }
+        ]}
+      ]},
+      { id:"doku", title:"Dokumentation & Prüfprotokolle", subsections:[
+        { id:"plaene", title:"Pläne", items:[
+          { id:"wartungsplaene", label:"Wartungs- & Prüfpläne vollständig", critical:true }
+        ]},
+        { id:"berichte", title:"Berichte & Nachweise", items:[
+          { id:"berichte", label:"Letzte Prüfberichte vorhanden (Aufzug/RLT/Elektro)", critical:true },
+          { id:"gfb", label:"Gefährdungsbeurteilung aktuell", critical:true }
+        ]},
+        { id:"notfall", title:"Notfall & Fremdfirmen", items:[
+          { id:"notfallplaene", label:"Notfallpläne ausgehängt", critical:true },
+          { id:"fremdfirmen", label:"Fremdfirmenprotokolle abgelegt", critical:true }
+        ]}
+      ]},
+      { id:"zusatz", title:"Zusatzbereiche (optional)", subsections:[
+        { id:"baeckerei", title:"Bäckerei/Metzgerei", items:[
+          { id:"baeckerei", label:"Geräte, Dunstabzug, Fettabscheider", critical:true }
+        ]},
+        { id:"pfand", title:"Pfand & Leergut", items:[
+          { id:"leergut", label:"Pfand- & Leergutautomaten funktionsfähig", critical:false }
+        ]},
+        { id:"energie", title:"Energie", items:[
+          { id:"pv", label:"PV-Anlage geprüft", critical:true },
+          { id:"ladesaeulen", label:"Ladesäulen für E-Autos funktionsfähig", critical:true }
+        ]}
+      ]}
+    ];
+
+    const KEY = "supermarkt-checkliste-html-v3";
+    const DEFAULT_STATUS = "offen";
+
+    // Feature detection for date input support
+    const DATE_INPUT_TYPE = (function(){
+      const i = document.createElement('input');
+      i.setAttribute('type','date');
+      return i.type === 'date' ? 'date' : 'text';
+    })();
+
+    function supportsDownload(){
+      const a = document.createElement('a');
+      return typeof a.download !== 'undefined';
+    }
+
+    const state = {
+      meta: {
+        marktname: "", filialnummer: "", adresse: "", ansprechpartner: "",
+        datum: "", pruefer: "", verantwortlicher: ""
+      },
+      data: {},
+      query: "",
+      onlyCritical: false,
+      statusFilter: "alle",
+    };
+
+    function load() {
+      try {
+        const raw = localStorage.getItem(KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          state.meta = { ...state.meta, ...(parsed.meta || {}) };
+          state.data = parsed.data || {};
+        }
+      } catch {}
+    }
+    function save() {
+      try { localStorage.setItem(KEY, JSON.stringify({ meta: state.meta, data: state.data })); } catch {}
+    }
+
+    function el(html) {
+      const t = document.createElement('template');
+      t.innerHTML = html.trim();
+      return t.content.firstChild;
+    }
+
+    // ===== Helpers über verschachtelte Struktur =====
+    function forEachItem(cb){
+      for (const sec of SECTIONS){
+        for (const sub of sec.subsections){
+          for (const it of sub.items){
+            cb(sec, sub, it);
+          }
+        }
+      }
+    }
+
+    function counts() {
+      let total=0, ok=0, mangel=0, offen=0, criticalTotal=0;
+      forEachItem((sec, sub, it) => {
+        total++; if (it.critical) criticalTotal++;
+        const st = (state.data[it.id]?.status) || DEFAULT_STATUS;
+        if (st === 'ok') ok++; else if (st === 'mangel') mangel++; else offen++;
+      });
+      return { total, ok, mangel, offen, criticalTotal };
+    }
+
+    function renderBadges() {
+      const c = counts();
+      const row = document.getElementById('badgeRow');
+      row.innerHTML = '';
+      const pills = [
+        `<span class="inline-flex items-center gap-2 rounded-md bg-gray-200 px-2 py-1">Punkte: ${c.total}</span>`,
+        `<span class="inline-flex items-center gap-2 rounded-md border px-2 py-1">Kritisch: ${c.criticalTotal}</span>`,
+        `<span class="inline-flex items-center gap-2 rounded-md bg-green-600 text-white px-2 py-1">OK: ${c.ok}</span>`,
+        `<span class="inline-flex items-center gap-2 rounded-md bg-yellow-600 text-white px-2 py-1">Offen: ${c.offen}</span>`,
+        `<span class="inline-flex items-center gap-2 rounded-md bg-red-600 text-white px-2 py-1">Mangel: ${c.mangel}</span>`
+      ];
+      pills.forEach(p=>row.appendChild(el(p)));
+    }
+
+    function filteredSections() {
+      const q = state.query.trim().toLowerCase();
+      const matches = (sec, sub, it) => {
+        if (state.onlyCritical && !it.critical) return false;
+        if (state.statusFilter !== 'alle') {
+          const s = (state.data[it.id]?.status) || DEFAULT_STATUS;
+          if (s !== state.statusFilter) return false;
+        }
+        if (q) {
+          const hay = (sec.title + ' ' + sub.title + ' ' + it.label).toLowerCase();
+          if (!hay.includes(q)) return false;
+        }
+        return true;
+      };
+
+      const out = [];
+      for (const sec of SECTIONS){
+        const newSubsections = [];
+        for (const sub of sec.subsections){
+          const items = sub.items.filter(it => matches(sec, sub, it));
+          if (items.length) newSubsections.push({ ...sub, items });
+        }
+        if (newSubsections.length) out.push({ ...sec, subsections: newSubsections });
+      }
+      return out;
+    }
+
+    function setItemState(id, patch) {
+      state.data[id] = { ...(state.data[id]||{}), ...patch };
+      save();
+      renderBadges();
+    }
+
+    function itemCard(sec, sub, it) {
+      const s = state.data[it.id]?.status || DEFAULT_STATUS;
+      const note = state.data[it.id]?.note || '';
+      const last = state.data[it.id]?.last || '';
+      const criticalBadge = it.critical ? '<span class="inline-flex items-center rounded-md bg-red-600 text-white px-2 py-0.5 text-xs">Wartungswichtig</span>' : '';
+
+      const card = el(`
+        <div class="rounded-2xl border p-4 bg-white">
+          <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div class="flex items-start gap-3">
+              <input type="checkbox" class="mt-1 h-4 w-4">
+              <div>
+                <div class="font-medium leading-tight">${it.label}</div>
+                <div class="mt-1 flex flex-wrap gap-2 text-xs">
+                  ${criticalBadge}
+                  <span class="inline-flex items-center rounded-md border px-2 py-0.5">Status: <span class="ml-1 font-semibold" data-status>${s}</span></span>
+                </div>
+              </div>
+            </div>
+            <div class="flex items-center gap-2">
+              <select class="border rounded-md px-2 py-1 bg-white">
+                <option value="offen">Offen</option>
+                <option value="ok">OK</option>
+                <option value="mangel">Mangel</option>
+              </select>
+              <button class="px-3 py-2 rounded-md border bg-white">Leeren</button>
+            </div>
+          </div>
+          ${it.critical ? `
+          <div class="mt-4 grid gap-4 md:grid-cols-2">
+            <div class="space-y-2">
+              <label class="text-sm font-medium">Bemerkungen</label>
+              <textarea rows="3" class="w-full border rounded-md p-2" placeholder="z. B. Geräusche am Motor, Filter verschmutzt…"></textarea>
+            </div>
+            <div class="space-y-2">
+              <label class="text-sm font-medium">Letzte Wartung</label>
+              <input type="date" class="w-full border rounded-md p-2" />
+              <p class="text-xs text-gray-500" data-lastinfo></p>
+            </div>
+          </div>` : ''}
+        </div>
+      `);
+
+      const checkbox = card.querySelector('input[type="checkbox"]');
+      const select = card.querySelector('select');
+      const statusEl = card.querySelector('[data-status]');
+      const btnClear = card.querySelector('button');
+      const ta = card.querySelector('textarea');
+      const date = card.querySelector('input[type="date"]');
+      const lastInfo = card.querySelector('[data-lastinfo]');
+
+      if (date && DATE_INPUT_TYPE === 'text') {
+        try { date.setAttribute('type', 'text'); } catch(_) {}
+        date.placeholder = 'YYYY-MM-DD';
+      }
+
+      checkbox.checked = (s === 'ok');
+      select.value = s;
+      if (ta) ta.value = note;
+      if (date) date.value = last;
+      if (last && lastInfo) lastInfo.textContent = `eingetragen: ${new Date(last).toLocaleDateString()}`;
+
+      checkbox.addEventListener('change', (e) => {
+        const newS = e.target.checked ? 'ok' : DEFAULT_STATUS;
+        setItemState(it.id, { status: newS });
+        statusEl.textContent = newS;
+        select.value = newS;
+      });
+      select.addEventListener('change', (e) => {
+        const newS = e.target.value;
+        setItemState(it.id, { status: newS });
+        statusEl.textContent = newS;
+        checkbox.checked = (newS === 'ok');
+      });
+      if (ta) ta.addEventListener('input', (e) => setItemState(it.id, { note: e.target.value }));
+      if (date) date.addEventListener('change', (e) => {
+        if (DATE_INPUT_TYPE === 'text') {
+          const v = e.target.value.trim();
+          if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) {
+            e.target.setCustomValidity('Bitte Datum als YYYY-MM-DD eingeben');
+          } else {
+            e.target.setCustomValidity('');
+          }
+        }
+        setItemState(it.id, { last: e.target.value });
+        if (lastInfo) lastInfo.textContent = e.target.value ? `eingetragen: ${new Date(e.target.value).toLocaleDateString()}` : '';
+      });
+      btnClear.addEventListener('click', () => {
+        setItemState(it.id, { status: DEFAULT_STATUS, note: '', last: '' });
+        checkbox.checked = false; select.value = DEFAULT_STATUS; statusEl.textContent = DEFAULT_STATUS;
+        if (ta) ta.value = ''; if (date) date.value = ''; if (lastInfo) lastInfo.textContent = '';
+      });
+
+      return card;
+    }
+
+    function render() {
+      const content = document.getElementById('content');
+      content.innerHTML = '';
+      for (const sec of filteredSections()) {
+        const secEl = el(`<section class="shadow-md rounded-2xl border bg-white">
+          <div class="px-6 pt-6">
+            <h2 class="text-lg font-semibold">${sec.title}</h2>
+          </div>
+          <div class="p-6 space-y-6"></div>
+        </section>`);
+        const box = secEl.querySelector('div.p-6.space-y-6');
+
+        for (const sub of sec.subsections){
+          const subEl = el(`<div>
+            <h3 class="text-sm font-semibold text-gray-700 mb-2">${sub.title}</h3>
+            <div class="space-y-4"></div>
+          </div>`);
+          const list = subEl.querySelector('div.space-y-4');
+          for (const it of sub.items){
+            list.appendChild(itemCard(sec, sub, it));
+          }
+          box.appendChild(subEl);
+        }
+        content.appendChild(secEl);
+      }
+      syncPrintValues();
+    }
+
+    function exportJSON() {
+      const blob = new Blob([JSON.stringify({ meta: state.meta, data: state.data, exportedAt: new Date().toISOString(), schema:"v3" }, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const filename = 'supermarkt-checkliste_' + new Date().toISOString().slice(0,10) + '_v3.json';
+      const a = document.createElement('a');
+      a.href = url; a.download = filename;
+      if (supportsDownload()) { document.body.appendChild(a); a.click(); document.body.removeChild(a); }
+      else { window.open(url, '_blank'); }
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+    function exportCSV() {
+      const rows = [];
+      rows.push(["Marktname","Filialnummer","Ansprechpartner","Adresse","Datum der Prüfung","Prüfer","Verantwortlicher"]);
+      rows.push([
+        state.meta.marktname || "",
+        state.meta.filialnummer || "",
+        state.meta.ansprechpartner || "",
+        (state.meta.adresse || "").replace(/\n/g, " "),
+        state.meta.datum || "",
+        state.meta.pruefer || "",
+        state.meta.verantwortlicher || ""
+      ]);
+      rows.push([]);
+      rows.push(["Bereich","Unterbereich","Punkt","Kritisch","Status","Bemerkungen","Letzte Wartung"]);
+
+      forEachItem((sec, sub, it) => {
+        const st = (state.data[it.id]?.status) || DEFAULT_STATUS;
+        const note = (state.data[it.id]?.note || '').replace(/\n/g, ' ');
+        const last = state.data[it.id]?.last || '';
+        rows.push([sec.title, sub.title, it.label, it.critical ? 'ja' : 'nein', st, note, last]);
+      });
+
+      const csv = rows.map(r => r.map(c => '"' + String(c).replace(/"/g,'""') + '"').join(';')).join('\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const filename = 'supermarkt-checkliste_' + new Date().toISOString().slice(0,10) + '_v3.csv';
+      const a = document.createElement('a'); a.href = url; a.download = filename;
+      if (supportsDownload()) { document.body.appendChild(a); a.click(); document.body.removeChild(a); }
+      else { window.open(url, '_blank'); }
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+
+    function initUI() {
+      document.getElementById('year').textContent = new Date().getFullYear();
+      const search = document.getElementById('search');
+      const statusFilter = document.getElementById('statusFilter');
+      const onlyCritical = document.getElementById('onlyCritical');
+      document.getElementById('btnJson').addEventListener('click', exportJSON);
+      document.getElementById('btnCsv').addEventListener('click', exportCSV);
+      document.getElementById('btnPdf').addEventListener('click', () => window.print());
+      document.getElementById('btnReset').addEventListener('click', () => { localStorage.removeItem(KEY); state.data = {}; state.meta = { marktname:"", filialnummer:"", adresse:"", ansprechpartner:"", datum:"", pruefer:"", verantwortlicher:"" }; bindMetaToInputs(); renderBadges(); render(); });
+
+      search.addEventListener('input', (e) => { state.query = e.target.value; render(); });
+      statusFilter.addEventListener('change', (e) => { state.statusFilter = e.target.value; render(); });
+      onlyCritical.addEventListener('change', (e) => { state.onlyCritical = e.target.checked; render(); });
+
+      bindMetaToInputs();
+    }
+
+    function bindMetaToInputs(){
+      const ids = ["marktname","filialnummer","adresse","ansprechpartner","datum","pruefer","verantwortlicher"];
+      ids.forEach(key => {
+        const elInput = document.getElementById('f_'+key);
+        if (!elInput) return;
+        if (key === 'datum' && DATE_INPUT_TYPE === 'text') {
+          try { elInput.setAttribute('type', 'text'); } catch(_) {}
+          elInput.placeholder = 'YYYY-MM-DD';
+        }
+        elInput.value = state.meta[key] || "";
+        elInput.addEventListener('input', ev => { state.meta[key] = ev.target.value; save(); syncPrintValues(); });
+        elInput.addEventListener('change', ev => { state.meta[key] = ev.target.value; save(); syncPrintValues(); });
+      });
+      syncPrintValues();
+    }
+
+    function syncPrintValues(){
+      const map = [
+        ["pv_marktname","marktname"],
+        ["pv_filialnummer","filialnummer"],
+        ["pv_ansprechpartner","ansprechpartner"],
+        ["pv_adresse","adresse"],
+        ["pv_datum","datum"],
+        ["pv_pruefer","pruefer"],
+        ["pv_verantwortlicher","verantwortlicher"],
+      ];
+      map.forEach(([pvId, key]) => {
+        const elPv = document.getElementById(pvId);
+        if (elPv) elPv.textContent = state.meta[key] || "";
+      });
+    }
+
+    load();
+    initUI();
+    renderBadges();
+    render();
+  </script>
+</body>
+</html>
